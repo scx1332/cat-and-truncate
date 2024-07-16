@@ -13,11 +13,17 @@ struct Args {
     /// Percent of file at which truncate should be performed
     #[clap(short, long, default_value = "50")]
     truncate: f64,
+
+    /// Time to wait before truncating the file
+    #[clap(short, long, default_value = "30")]
+    safety_time: u64,
 }
 
-fn cat_file(file_path: &str, drop_percent: f64) -> anyhow::Result<()> {
+fn cat_file(file_path: &str, drop_percent: f64, safety_time: u64) -> anyhow::Result<()> {
     let mut buffer = Vec::new();
     let mut stdout = io::stdout();
+
+    let mut is_first = true;
     // Read the file
     'outer: loop {
         let drop_bytes =
@@ -84,6 +90,14 @@ fn cat_file(file_path: &str, drop_percent: f64) -> anyhow::Result<()> {
         file_copy.flush().unwrap();
         drop(file);
         drop(file_copy);
+
+        if is_first {
+            log::warn!("At this point file {file_path} will be removed without possibility to recover, you have {safety_time} seconds to stop the script and prevent this.");
+            std::thread::sleep(std::time::Duration::from_secs(safety_time));
+            log::warn!("Time passed, removing file {file_path}. Do not stop script the script after this point");
+            is_first = false;
+        }
+
         std::fs::remove_file(file_path).unwrap();
         if bytes_written == 0 {
             log::info!("Removing empty file {}", file_path_copy);
@@ -102,5 +116,5 @@ fn main() -> anyhow::Result<()> {
     );
     env_logger::init();
     let args = Args::parse();
-    cat_file(&args.file, args.truncate)
+    cat_file(&args.file, args.truncate, args.safety_time)
 }
