@@ -34,7 +34,7 @@ pub fn realize_plan(plan: ChunkPlan) -> anyhow::Result<()> {
         println!("Copy {} bytes", plan.chunk_size);
         println!(
             "Truncate file to {} bytes",
-            plan.file_size - (i * plan.chunk_size)
+            plan.file_size - ((i + 1) * plan.chunk_size)
         );
     }
 
