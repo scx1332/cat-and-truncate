@@ -2,6 +2,7 @@ use std::fs::OpenOptions;
 use std::io::{Seek, SeekFrom, Write};
 use anyhow::bail;
 use rand::{Rng, thread_rng};
+use rand::distributions::{Alphanumeric, DistString};
 
 fn truncate_file_int(file_path: &str, target_size: u64) -> anyhow::Result<()> {
     //1 open file
@@ -71,7 +72,7 @@ pub fn generate_zero_file(file_path: &str, len: u64) -> anyhow::Result<()> {
     }
 }
 
-fn generate_random_file_int(file_path: &str, len: u64) -> anyhow::Result<()> {
+fn generate_random_file_int(file_path: &str, len: u64, is_ascii: bool) -> anyhow::Result<()> {
     //1 open file
     let mut file = OpenOptions::new()
         .write(true)
@@ -83,7 +84,12 @@ fn generate_random_file_int(file_path: &str, len: u64) -> anyhow::Result<()> {
     let mut bytes_left = len;
     let mut thread_rng = thread_rng();
     loop {
-        thread_rng.fill(&mut buf[..]);
+        if !is_ascii {
+            thread_rng.fill(&mut buf[..]);
+        } else {
+            let str = Alphanumeric.sample_string(&mut rand::thread_rng(), buf.len());
+            buf.copy_from_slice(str.as_bytes());
+        }
         let bytes_to_write = std::cmp::min(buf.len() as u64, bytes_left);
         file.write_all(&buf[0..bytes_to_write as usize])?;
         bytes_left -= bytes_to_write;
@@ -94,8 +100,8 @@ fn generate_random_file_int(file_path: &str, len: u64) -> anyhow::Result<()> {
     Ok(())
 }
 
-pub fn generate_random_file(file_path: &str, len: u64) -> anyhow::Result<()> {
-    match generate_random_file_int(file_path, len) {
+pub fn generate_random_file(file_path: &str, len: u64, is_ascii: bool) -> anyhow::Result<()> {
+    match generate_random_file_int(file_path, len, is_ascii) {
         Ok(_) => Ok(()),
         Err(e) => {
             log::error!("Error generating random file {}: {}", file_path, e);

@@ -30,6 +30,9 @@ struct Args {
     test_create_random_file_size: Option<u64>,
 
     #[clap(long)]
+    test_create_ascii_file_size: Option<u64>,
+
+    #[clap(long)]
     test_truncate_file_size: Option<u64>,
 
 
@@ -142,7 +145,11 @@ fn main() -> anyhow::Result<()> {
 
 
     if let Some(test_create_random_file_size) = args.test_create_random_file_size {
-        generate_random_file(&args.file, test_create_random_file_size)?;
+        generate_random_file(&args.file, test_create_random_file_size, false)?;
+        test_run = true;
+    }
+    if let Some(test_create_ascii_file_size) = args.test_create_ascii_file_size {
+        generate_random_file(&args.file, test_create_ascii_file_size, true)?;
         test_run = true;
     }
     if let Some(test_create_zero_file_size) = args.test_create_zero_file_size {
