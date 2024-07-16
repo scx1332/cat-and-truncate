@@ -35,4 +35,6 @@ jobs:
 
       - name: Compare checksums
         run: |
+          cat test-in.file.sha1
+          cat test-out.file.sha1
           diff test-in.file.sha1 test-out.file.sha1
