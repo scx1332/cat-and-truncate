@@ -1,5 +1,5 @@
 [package]
-name = "cat_and_truncate"
+name = "cat-once"
 version = "1.0.0"
 edition = "2021"
 description = "Tool used to cat files in tight disc conditions saving disk space"
