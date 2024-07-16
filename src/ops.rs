@@ -51,13 +51,10 @@ fn generate_zero_file_int(file_path: &str, len: u64) -> anyhow::Result<()> {
 
     let buf = vec![0u8; 1000 * 1000];
     let mut bytes_left = len;
-    loop {
+    while bytes_left > 0 {
         let bytes_to_write = std::cmp::min(buf.len() as u64, bytes_left);
         file.write_all(&buf[0..bytes_to_write as usize])?;
         bytes_left -= bytes_to_write;
-        if bytes_left <= buf.len() as u64 {
-            break;
-        }
     }
     Ok(())
 }
@@ -83,7 +80,7 @@ fn generate_random_file_int(file_path: &str, len: u64, is_ascii: bool) -> anyhow
     let mut buf = vec![0u8; 1000 * 1000];
     let mut bytes_left = len;
     let mut thread_rng = thread_rng();
-    loop {
+    while bytes_left > 0 {
         if !is_ascii {
             thread_rng.fill(&mut buf[..]);
         } else {
@@ -93,9 +90,6 @@ fn generate_random_file_int(file_path: &str, len: u64, is_ascii: bool) -> anyhow
         let bytes_to_write = std::cmp::min(buf.len() as u64, bytes_left);
         file.write_all(&buf[0..bytes_to_write as usize])?;
         bytes_left -= bytes_to_write;
-        if bytes_left <= buf.len() as u64 {
-            break;
-        }
     }
     Ok(())
 }
