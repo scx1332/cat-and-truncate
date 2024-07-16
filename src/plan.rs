@@ -32,7 +32,7 @@ pub fn realize_plan(plan: ChunkPlan) -> anyhow::Result<()> {
     log::info!("Realizing plan for file size {} and chunk size {}", plan.file_size, plan.chunk_size);
     for i in 0..plan.start_chunks {
         let dst_chunk_start = i * plan.chunk_size;
-        let dst_chunk_end = dst_chunk_start * plan.chunk_size;
+        let dst_chunk_end = dst_chunk_start + plan.chunk_size;
         let src_chunk_start = plan.file_size - ((i + 1) * plan.chunk_size);
         let src_chunk_end = plan.file_size + plan.chunk_size;
         println!("Output chunk {} - pos {}-{}", i, dst_chunk_start, dst_chunk_end);
