@@ -2,14 +2,11 @@ use clap::Parser;
 use std::env;
 use std::fs::{File, OpenOptions};
 use std::io::{self, Read, Write};
-use std::path::{Path, PathBuf};
-use std::thread::sleep;
 
-/// A simple program to read a file name and length from the command line
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
 struct Args {
-    /// Name of the file to read
+    /// Name of the file to read, warning it will be removed
     #[clap(short, long)]
     file: String,
 
@@ -23,20 +20,26 @@ fn cat_file(file_path: &str, drop_percent: f64) -> anyhow::Result<()> {
     let mut stdout = io::stdout();
     // Read the file
     'outer: loop {
-        let drop_bytes = (drop_percent / 100.0) * std::fs::metadata(file_path).unwrap().len() as f64;
+        let drop_bytes =
+            (drop_percent / 100.0) * std::fs::metadata(file_path).unwrap().len() as f64;
         let drop_bytes = drop_bytes as usize + 10000000;
-        log::info!("Reading file {}, drop at {}% - limit bytes {}", file_path, drop_percent, drop_bytes);
+        log::info!(
+            "Reading file {}, drop at {}% - limit bytes {}",
+            file_path,
+            drop_percent,
+            drop_bytes
+        );
         //open file and check if you have write permission at the same time
         let mut file = OpenOptions::new()
             .read(true)
             .truncate(false)
-            .open(&file_path)
+            .open(file_path)
             .unwrap();
         let file_path_copy = format!("{file_path}.part");
         let mut local_bytes_read = 0;
         loop {
             buffer.resize(1000 * 1000, 0);
-            let bytes_read = file.read(&mut buffer.as_mut_slice()).unwrap();
+            let bytes_read = file.read(buffer.as_mut_slice()).unwrap();
             if bytes_read == 0 {
                 break;
             }
@@ -62,17 +65,20 @@ fn cat_file(file_path: &str, drop_percent: f64) -> anyhow::Result<()> {
         );
         loop {
             buffer.resize(1000 * 1000, 0);
-            let bytes_read = file.read(&mut buffer.as_mut_slice()).unwrap();
+            let bytes_read = file.read(buffer.as_mut_slice()).unwrap();
             if bytes_read == 0 {
                 break;
             }
             if bytes_read < buffer.len() {
                 buffer.resize(bytes_read, 0);
             }
-            file_copy.write_all(&buffer.as_slice()).unwrap();
+            file_copy.write_all(buffer.as_slice()).unwrap();
             bytes_written += bytes_read;
         }
-        log::info!("Finished reading and copying file, bytes written: {}", bytes_written);
+        log::info!(
+            "Finished reading and copying file, bytes written: {}",
+            bytes_written
+        );
         //remove the file
 
         file_copy.flush().unwrap();

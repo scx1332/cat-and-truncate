@@ -2,6 +2,9 @@
 name = "cat_and_truncate"
 version = "1.0.0"
 edition = "2021"
+description = "Tool used to cat files in tight disc conditions saving disk space"
+authors = ["Scx1332 <sieciech.czajka@golem.network>"]
+license = "GPL-3.0"
 
 [dependencies]
 anyhow = "1.0.86"
