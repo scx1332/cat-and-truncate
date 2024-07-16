@@ -28,4 +28,4 @@ jobs:
           sudo mount -t tmpfs -o size=1500M tmpfs tmp
           cp test.tar.zstd tmp
           cd tmp
-          cat-once --file test.tar.zstd --safety-time 1 | test2.tar.zstd
+          cat-once --file test.tar.zstd --safety-time 1 > test2.tar.zstd
