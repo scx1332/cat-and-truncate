@@ -20,6 +20,7 @@ jobs:
       - name: Prepare test file
         run: |
           cat-once --file test.file --test-create-ascii-file-size=1000000000
+          sha1sum test.file
           tar -cf - test.file | zstd -c > test.tar.zstd
 
       - name: Mount tmpfs
@@ -29,3 +30,5 @@ jobs:
           cp test.tar.zstd tmp
           cd tmp
           cat-once --file test.tar.zstd --safety-time 1 > test2.tar.zstd
+          cat-once --file test2.tar.zstd --safety-time 1 | tar -I zstd -xf - -C .
+          sha1sum test.file
