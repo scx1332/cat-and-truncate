@@ -1,0 +1,24 @@
+name: CI test
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    name: Build and test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build cat-once
+        run: |
+          cargo build --release
+          mv target/release/cat-once /usr/bin/cat-once
+
+      - name: Prepare test file
+        run: |
+          cat-once --file test.file --test-create-ascii-file-size=1000000000
+          tar -cf - test.file | zstd -c > test.tar.zstd
+
