@@ -34,7 +34,7 @@ pub fn realize_plan(plan: ChunkPlan) -> anyhow::Result<()> {
         let dst_chunk_start = i * plan.chunk_size;
         let dst_chunk_end = dst_chunk_start + plan.chunk_size;
         let src_chunk_start = plan.file_size - ((i + 1) * plan.chunk_size);
-        let src_chunk_end = plan.file_size + plan.chunk_size;
+        let src_chunk_end = src_chunk_start + plan.chunk_size;
         println!("Output chunk {} - pos {}-{}", i, dst_chunk_start, dst_chunk_end);
         println!("Copy {} bytes from {}-{} to {}-{}", plan.chunk_size, src_chunk_start, src_chunk_end, dst_chunk_start, dst_chunk_end);
         println!(
