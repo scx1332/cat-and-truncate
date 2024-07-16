@@ -22,3 +22,10 @@ jobs:
           cat-once --file test.file --test-create-ascii-file-size=1000000000
           tar -cf - test.file | zstd -c > test.tar.zstd
 
+      - name: Mount tmpfs
+        run: |
+          mkdir tmp
+          sudo mount -t tmpfs -o size=1500M tmpfs tmp
+          cp test.tar.zstd tmp
+          cd tmp
+          cat-once --file test.tar.zstd --safety-time 1 | test2.tar.zstd
