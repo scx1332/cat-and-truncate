@@ -1,0 +1,11 @@
+[package]
+name = "cat_and_truncate"
+version = "1.0.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.86"
+rand = "0.8"
+log = "0.4"
+env_logger = "0.11.3"
+clap = { version = "4.5.9", features = ["derive"] }
