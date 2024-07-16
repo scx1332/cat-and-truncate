@@ -1,12 +1,12 @@
 mod ops;
+mod plan;
 
+use crate::ops::{generate_random_file, generate_zero_file, truncate_file};
+use crate::plan::{plan_chunks, realize_plan};
 use clap::Parser;
 use std::env;
 use std::fs::{File, OpenOptions};
 use std::io::{self, Read, Write};
-use crate::ops::{generate_random_file, generate_zero_file, truncate_file};
-
-
 
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
@@ -35,12 +35,12 @@ struct Args {
     #[clap(long)]
     test_truncate_file_size: Option<u64>,
 
-
+    #[clap(long)]
+    plan_chunks: bool,
 
     #[clap(long)]
     test_random: bool,
 }
-
 
 fn cat_file(file_path: &str, drop_percent: f64, safety_time: u64) -> anyhow::Result<()> {
     let mut buffer = Vec::new();
@@ -140,9 +140,7 @@ fn main() -> anyhow::Result<()> {
     env_logger::init();
     let args = Args::parse();
 
-
     let mut test_run = false;
-
 
     if let Some(test_create_random_file_size) = args.test_create_random_file_size {
         generate_random_file(&args.file, test_create_random_file_size, false)?;
@@ -160,9 +158,15 @@ fn main() -> anyhow::Result<()> {
         truncate_file(&args.file, test_truncate_size)?;
         test_run = true;
     }
+    if args.plan_chunks {
+        test_run = true;
+
+        let plan = plan_chunks(1000, 10011).unwrap();
+        realize_plan(plan).unwrap();
+    }
 
     if !test_run {
-        return cat_file(&args.file, args.truncate, args.safety_time)
+        return cat_file(&args.file, args.truncate, args.safety_time);
     }
     Ok(())
 }

@@ -1,8 +1,8 @@
+use anyhow::bail;
+use rand::distributions::{Alphanumeric, DistString};
+use rand::{thread_rng, Rng};
 use std::fs::OpenOptions;
 use std::io::{Seek, SeekFrom, Write};
-use anyhow::bail;
-use rand::{Rng, thread_rng};
-use rand::distributions::{Alphanumeric, DistString};
 
 fn truncate_file_int(file_path: &str, target_size: u64) -> anyhow::Result<()> {
     //1 open file
@@ -14,13 +14,21 @@ fn truncate_file_int(file_path: &str, target_size: u64) -> anyhow::Result<()> {
     let file_size = file.seek(SeekFrom::End(0))?;
 
     if file_size < target_size {
-        bail!("File size is already smaller than target size {} vs {}", file_size, target_size);
+        bail!(
+            "File size is already smaller than target size {} vs {}",
+            file_size,
+            target_size
+        );
     }
     if file_size == target_size {
         log::debug!("File size is already equal to target size {}", file_size);
         return Ok(());
     }
-    log::debug!("Truncating file {} to target size {}", file_path, target_size);
+    log::debug!(
+        "Truncating file {} to target size {}",
+        file_path,
+        target_size
+    );
 
     //2 seek to target size
     file.seek(SeekFrom::Start(target_size))?;
