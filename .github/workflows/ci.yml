@@ -15,7 +15,7 @@ jobs:
       - name: Build cat-once
         run: |
           cargo build --release
-          mv target/release/cat-once /usr/bin/cat-once
+          sudo mv target/release/cat-once /usr/bin/cat-once
 
       - name: Prepare test file
         run: |
