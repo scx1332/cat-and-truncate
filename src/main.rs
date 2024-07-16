@@ -23,13 +23,13 @@ struct Args {
     #[clap(short, long, default_value = "30")]
     safety_time: u64,
 
-    #[clap(long, default_value = "1000000")]
+    #[clap(long)]
     test_create_zero_file_size: Option<u64>,
 
-    #[clap(long, default_value = "1000000")]
+    #[clap(long)]
     test_create_random_file_size: Option<u64>,
 
-    #[clap(long, default_value = "1000000")]
+    #[clap(long)]
     test_truncate_file_size: Option<u64>,
 
 
