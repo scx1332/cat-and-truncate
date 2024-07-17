@@ -29,8 +29,8 @@ jobs:
           sudo mount -t tmpfs -o size=1560M tmpfs tmp
           cp test.tar.zstd tmp
           cd tmp
-          cat-once --file test.tar.zstd --safety-time 1 > test2.tar.zstd
-          cat-once --file test2.tar.zstd --safety-time 1 | tar -I zstd -xf - -C .
+          cat-once --file test.tar.zstd > test2.tar.zstd
+          cat-once --file test2.tar.zstd | tar -I zstd -xf - -C .
           sha1sum test.file > ../test-out.file.sha1
 
       - name: Compare checksums

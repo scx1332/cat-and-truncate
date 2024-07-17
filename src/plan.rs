@@ -1,5 +1,5 @@
-use anyhow::bail;
 use crate::ops::{copy_chunk, output_chunk, truncate_file};
+use anyhow::bail;
 
 pub struct ChunkPlan {
     chunk_size: u64,
@@ -34,23 +34,43 @@ pub struct Operation {
     pub src_chunk: Option<(u64, u64)>,
     pub data_chunk: (u64, u64),
     pub truncate_to: u64,
-    pub is_middle: bool
+    pub is_middle: bool,
 }
 
-pub fn commit_plan(file_path: &str, operations: &[Operation]) -> anyhow::Result<()> {
+pub fn commit_plan(file_path: &str, operations: &[Operation], dry_run: bool) -> anyhow::Result<()> {
     let mut step_no = 0;
     for op in operations {
         let middle_msg = if op.is_middle { "(middle) " } else { "" };
-        log::info!("{} - {}Output chunk {}-{}", step_no, middle_msg, op.data_chunk.0, op.data_chunk.1);
-        output_chunk(file_path, op.data_chunk).unwrap();
+        log::info!(
+            "{} - {}Output chunk {}-{}",
+            step_no,
+            middle_msg,
+            op.data_chunk.0,
+            op.data_chunk.1
+        );
+        if !dry_run {
+            output_chunk(file_path, op.data_chunk).unwrap();
+        }
         step_no += 1;
         if let Some((src_start, src_end)) = op.src_chunk {
-            log::info!("{} - Copy {} bytes from {}-{} to {}-{}", step_no, src_end - src_start, src_start, src_end, op.data_chunk.0, op.data_chunk.1);
-            copy_chunk(file_path, (src_start, src_end), op.data_chunk).unwrap();
+            log::info!(
+                "{} - Copy {} bytes from {}-{} to {}-{}",
+                step_no,
+                src_end - src_start,
+                src_start,
+                src_end,
+                op.data_chunk.0,
+                op.data_chunk.1
+            );
+            if !dry_run {
+                copy_chunk(file_path, (src_start, src_end), op.data_chunk).unwrap();
+            }
         }
         step_no += 1;
         log::info!("{} - Truncate file to {} bytes", step_no, op.truncate_to);
-        truncate_file(file_path, op.truncate_to).unwrap();
+        if !dry_run {
+            truncate_file(file_path, op.truncate_to).unwrap();
+        }
         step_no += 1;
     }
     Ok(())
@@ -60,10 +80,24 @@ pub fn explain_plan(operations: &[Operation]) {
     let mut step_no = 0;
     for op in operations {
         let middle_msg = if op.is_middle { "(middle) " } else { "" };
-        log::info!("{} - {}Output chunk {}-{}", step_no, middle_msg, op.data_chunk.0, op.data_chunk.1);
+        log::info!(
+            "{} - {}Output chunk {}-{}",
+            step_no,
+            middle_msg,
+            op.data_chunk.0,
+            op.data_chunk.1
+        );
         step_no += 1;
         if let Some((src_start, src_end)) = op.src_chunk {
-            log::info!("{} - Copy {} bytes from {}-{} to {}-{}", step_no, src_end - src_start, src_start, src_end, op.data_chunk.0, op.data_chunk.1);
+            log::info!(
+                "{} - Copy {} bytes from {}-{} to {}-{}",
+                step_no,
+                src_end - src_start,
+                src_start,
+                src_end,
+                op.data_chunk.0,
+                op.data_chunk.1
+            );
         }
         step_no += 1;
         log::info!("{} - Truncate file to {} bytes", step_no, op.truncate_to);
@@ -75,7 +109,11 @@ pub fn plan_into_realization(plan: ChunkPlan) -> anyhow::Result<Vec<Operation>> 
     let mut operations = Vec::new();
     let mut operation_no = 0;
     let operation_limit = 1000000;
-    log::info!("Realizing plan for file size {} and chunk size {}", plan.file_size, plan.chunk_size);
+    log::info!(
+        "Realizing plan for file size {} and chunk size {}",
+        plan.file_size,
+        plan.chunk_size
+    );
     for i in 0..plan.start_chunks {
         let dst_chunk_start = i * plan.chunk_size;
         let dst_chunk_end = dst_chunk_start + plan.chunk_size;

@@ -1,42 +1,46 @@
-use anyhow::{bail};
+use anyhow::bail;
 use rand::distributions::{Alphanumeric, DistString};
 use rand::{thread_rng, Rng};
 use std::fs::OpenOptions;
 use std::io::{Read, Seek, SeekFrom, Write};
 
 fn truncate_file_int(file_path: &str, target_size: u64) -> anyhow::Result<()> {
-    //1 open file
-    let mut file = OpenOptions::new()
-        .write(true)
-        .truncate(false)
-        .open(file_path)?;
+    if target_size == 0 {
+        std::fs::remove_file(file_path)?;
+        Ok(())
+    } else {
+        let mut file = OpenOptions::new()
+            .write(true)
+            .truncate(false)
+            .open(file_path)?;
 
-    let file_size = file.seek(SeekFrom::End(0))?;
+        let file_size = file.seek(SeekFrom::End(0))?;
 
-    if file_size < target_size {
-        bail!(
-            "File size is already smaller than target size {} vs {}",
-            file_size,
+        if file_size < target_size {
+            bail!(
+                "File size is already smaller than target size {} vs {}",
+                file_size,
+                target_size
+            );
+        }
+        if file_size == target_size {
+            log::debug!("File size is already equal to target size {}", file_size);
+            return Ok(());
+        }
+        log::debug!(
+            "Truncating file {} to target size {}",
+            file_path,
             target_size
         );
+
+        //2 seek to target size
+        file.seek(SeekFrom::Start(target_size))?;
+
+        //3 truncate file
+        file.set_len(target_size)?;
+
+        Ok(())
     }
-    if file_size == target_size {
-        log::debug!("File size is already equal to target size {}", file_size);
-        return Ok(());
-    }
-    log::debug!(
-        "Truncating file {} to target size {}",
-        file_path,
-        target_size
-    );
-
-    //2 seek to target size
-    file.seek(SeekFrom::Start(target_size))?;
-
-    //3 truncate file
-    file.set_len(target_size)?;
-
-    Ok(())
 }
 
 pub fn truncate_file(file_path: &str, target_size: u64) -> anyhow::Result<()> {
@@ -143,19 +147,41 @@ fn copy_chunk_int(file_path: &str, src: (u64, u64), dst: (u64, u64)) -> anyhow::
         bail!("Destination range is invalid {}-{}", dst.0, dst.1);
     }
     if src.1 - src.0 != dst.1 - dst.0 {
-        bail!("Source and destination ranges are not the same size {}-{} {}-{}", src.0, src.1, dst.0, dst.1);
+        bail!(
+            "Source and destination ranges are not the same size {}-{} {}-{}",
+            src.0,
+            src.1,
+            dst.0,
+            dst.1
+        );
     }
 
     //check if chunks are overlapping
     if ranges_overlap(src, dst) {
-        bail!("Source and destination ranges overlap {}-{} {}-{}", src.0, src.1, dst.0, dst.1);
+        bail!(
+            "Source and destination ranges overlap {}-{} {}-{}",
+            src.0,
+            src.1,
+            dst.0,
+            dst.1
+        );
     }
     let file_size = std::fs::metadata(file_path)?.len();
     if src.1 > file_size {
-        bail!("Source range is out of bounds {}-{} file size {}", src.0, src.1, file_size);
+        bail!(
+            "Source range is out of bounds {}-{} file size {}",
+            src.0,
+            src.1,
+            file_size
+        );
     }
     if dst.1 > file_size {
-        bail!("Destination range is out of bounds {}-{} file size {}", dst.0, dst.1, file_size);
+        bail!(
+            "Destination range is out of bounds {}-{} file size {}",
+            dst.0,
+            dst.1,
+            file_size
+        );
     }
 
     //open file for read write
@@ -185,8 +211,6 @@ fn copy_chunk_int(file_path: &str, src: (u64, u64), dst: (u64, u64)) -> anyhow::
     Ok(())
 }
 
-
-
 pub fn copy_chunk(file_path: &str, src: (u64, u64), dst: (u64, u64)) -> anyhow::Result<()> {
     match copy_chunk_int(file_path, src, dst) {
         Ok(_) => Ok(()),
@@ -195,16 +219,20 @@ pub fn copy_chunk(file_path: &str, src: (u64, u64), dst: (u64, u64)) -> anyhow::
             Err(e)
         }
     }
-
 }
 
-pub fn output_chunk_int(file_path: &str, data: (u64, u64)) -> anyhow::Result<()>  {
+pub fn output_chunk_int(file_path: &str, data: (u64, u64)) -> anyhow::Result<()> {
     if data.1 <= data.0 {
         bail!("Data range is invalid {}-{}", data.0, data.1);
     }
     let file_size = std::fs::metadata(file_path)?.len();
     if data.1 > file_size {
-        bail!("Data range is out of bounds {}-{} file size {}", data.0, data.1, file_size);
+        bail!(
+            "Data range is out of bounds {}-{} file size {}",
+            data.0,
+            data.1,
+            file_size
+        );
     }
 
     //open file for read write
@@ -226,7 +254,7 @@ pub fn output_chunk_int(file_path: &str, data: (u64, u64)) -> anyhow::Result<()>
     }
     Ok(())
 }
-pub fn output_chunk(file_path: &str, data: (u64, u64)) -> anyhow::Result<()>  {
+pub fn output_chunk(file_path: &str, data: (u64, u64)) -> anyhow::Result<()> {
     match output_chunk_int(file_path, data) {
         Ok(_) => Ok(()),
         Err(e) => {

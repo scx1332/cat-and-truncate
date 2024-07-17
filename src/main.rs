@@ -17,6 +17,10 @@ struct Args {
     #[clap(short, long, default_value = "50000")]
     chunk_size: u64,
 
+    /// Dry run, do not perform any operations
+    #[clap(long)]
+    dry_run: bool,
+
     #[clap(long)]
     test_create_zero_file_size: Option<u64>,
 
@@ -36,14 +40,13 @@ struct Args {
     test_random: bool,
 }
 
-fn cat_file(file_path: &str, chunk_size: u64) -> anyhow::Result<()> {
+fn cat_file(file_path: &str, chunk_size: u64, dry_run: bool) -> anyhow::Result<()> {
     let file_size = std::fs::metadata(file_path)?.len();
     let chunk_size = std::cmp::min(file_size, chunk_size) as u64;
     let plan = plan_chunks(chunk_size, file_size).unwrap();
     let operations = plan_into_realization(plan).unwrap();
-    commit_plan(file_path, &operations)
+    commit_plan(file_path, &operations, dry_run)
 }
-
 
 fn main() -> anyhow::Result<()> {
     env::set_var(
@@ -80,7 +83,7 @@ fn main() -> anyhow::Result<()> {
     }
 
     if !test_run {
-        return cat_file(&args.file, args.chunk_size);
+        return cat_file(&args.file, args.chunk_size, args.dry_run);
     }
     Ok(())
 }
