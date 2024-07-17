@@ -14,8 +14,8 @@ struct Args {
     file: String,
 
     /// Percent of file at which truncate should be performed
-    #[clap(short, long, default_value = "50000")]
-    chunk_size: u64,
+    #[clap(short, long, default_value = "50kB")]
+    chunk_size: bytesize::ByteSize,
 
     /// Dry run, do not perform any operations
     #[clap(long)]
@@ -83,7 +83,7 @@ fn main() -> anyhow::Result<()> {
     }
 
     if !test_run {
-        return cat_file(&args.file, args.chunk_size, args.dry_run);
+        return cat_file(&args.file, args.chunk_size.as_u64(), args.dry_run);
     }
     Ok(())
 }
