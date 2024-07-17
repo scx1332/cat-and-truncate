@@ -42,7 +42,8 @@ pub fn commit_plan(file_path: &str, operations: &[Operation], dry_run: bool) -> 
     for op in operations {
         let middle_msg = if op.is_middle { "(middle) " } else { "" };
         log::info!(
-            "{} - {}Output chunk {}-{}",
+            "{} - {}Output chunk {} - {}-{}",
+            op.chunk_no,
             step_no,
             middle_msg,
             op.data_chunk.0,
