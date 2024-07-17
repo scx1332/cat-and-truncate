@@ -47,6 +47,7 @@ jobs:
             cat-once --file test.file --test-create-ascii-file-size=$file_size
             sha1sum test.file > test-in.file.sha1
             cargo run --release -- --file test.file --chunk-size $chunk_size > test-out.file
-            sha1sum test-out.file > test-out.file.sha1
+            mv test-out.file test.file
+            sha1sum test.file > test-out.file.sha1
             diff test-in.file.sha1 test-out.file.sha1
           done
