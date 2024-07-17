@@ -68,7 +68,9 @@ pub fn commit_plan(
                 op.data_chunk.1
             );
             if !dry_run {
-                let data_chunk = if op.is_middle && (src_end - src_start + 1 == op.data_chunk.1 - op.data_chunk.0) {
+                let data_chunk = if op.is_middle
+                    && (src_end - src_start + 1 == op.data_chunk.1 - op.data_chunk.0)
+                {
                     (op.data_chunk.0, op.data_chunk.1 - 1)
                 } else {
                     op.data_chunk

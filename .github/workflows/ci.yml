@@ -38,3 +38,15 @@ jobs:
           cat test-in.file.sha1
           cat test-out.file.sha1
           diff test-in.file.sha1 test-out.file.sha1
+
+      - name: Random tests
+        run: |
+          for i in {1..100}; do
+            file_size=$(( ( RANDOM % 10000000 ) + 1 ))
+            chunk_size=$(( ( RANDOM % 1000000 ) + 20000 ))
+            cat-once --file test.file --test-create-ascii-file-size=$file_size
+            sha1sum test.file > test-in.file.sha1
+            cargo run --release -- --file test.file --chunk-size $chunk_size > test-out.file
+            sha1sum test-out.file > test-out.file.sha1
+            diff test-in.file.sha1 test-out.file.sha1
+          done
