@@ -1,8 +1,8 @@
-use anyhow::bail;
+use anyhow::{bail};
 use rand::distributions::{Alphanumeric, DistString};
 use rand::{thread_rng, Rng};
 use std::fs::OpenOptions;
-use std::io::{Seek, SeekFrom, Write};
+use std::io::{Read, Seek, SeekFrom, Write};
 
 fn truncate_file_int(file_path: &str, target_size: u64) -> anyhow::Result<()> {
     //1 open file
@@ -107,6 +107,130 @@ pub fn generate_random_file(file_path: &str, len: u64, is_ascii: bool) -> anyhow
         Ok(_) => Ok(()),
         Err(e) => {
             log::error!("Error generating random file {}: {}", file_path, e);
+            Err(e)
+        }
+    }
+}
+
+fn ranges_overlap(src: (u64, u64), dst: (u64, u64)) -> bool {
+    !(src.1 <= dst.0 || src.0 >= dst.1)
+}
+
+#[test]
+fn test_ranges_overlap_no_overlap() {
+    assert!(!ranges_overlap((10, 20), (20, 30)));
+    assert!(!ranges_overlap((30, 40), (10, 20)));
+    assert!(!ranges_overlap((0, 10), (10, 20)));
+    assert!(!ranges_overlap((10, 20), (0, 10)));
+    assert!(!ranges_overlap((10, 20), (20, 30)));
+    assert!(!ranges_overlap((20, 30), (10, 20)));
+    assert!(ranges_overlap((10, 20), (15, 25)));
+    assert!(ranges_overlap((15, 25), (10, 20)));
+    assert!(ranges_overlap((10, 20), (10, 20)));
+    assert!(ranges_overlap((10, 30), (15, 25)));
+    assert!(ranges_overlap((15, 25), (10, 30)));
+    assert!(ranges_overlap((10, 30), (15, 20)));
+    assert!(ranges_overlap((15, 20), (10, 30)));
+    assert!(!ranges_overlap((0, 1), (1, 2)));
+    assert!(!ranges_overlap((1, 2), (0, 1)));
+}
+
+fn copy_chunk_int(file_path: &str, src: (u64, u64), dst: (u64, u64)) -> anyhow::Result<()> {
+    if src.1 <= src.0 {
+        bail!("Source range is invalid {}-{}", src.0, src.1);
+    }
+    if dst.1 <= dst.0 {
+        bail!("Destination range is invalid {}-{}", dst.0, dst.1);
+    }
+    if src.1 - src.0 != dst.1 - dst.0 {
+        bail!("Source and destination ranges are not the same size {}-{} {}-{}", src.0, src.1, dst.0, dst.1);
+    }
+
+    //check if chunks are overlapping
+    if ranges_overlap(src, dst) {
+        bail!("Source and destination ranges overlap {}-{} {}-{}", src.0, src.1, dst.0, dst.1);
+    }
+    let file_size = std::fs::metadata(file_path)?.len();
+    if src.1 > file_size {
+        bail!("Source range is out of bounds {}-{} file size {}", src.0, src.1, file_size);
+    }
+    if dst.1 > file_size {
+        bail!("Destination range is out of bounds {}-{} file size {}", dst.0, dst.1, file_size);
+    }
+
+    //open file for read write
+    let mut file = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .truncate(false)
+        .open(file_path)?;
+
+    file.seek(SeekFrom::Start(src.0))?;
+    //seek to source start
+
+    //read buffer
+    let mut bytes_left = src.1 - src.0;
+    let mut buffer = vec![0u8; std::cmp::min(1000 * 1000, bytes_left as usize)];
+    while bytes_left > 0 {
+        let bytes_read = std::cmp::min(buffer.len() as u64, bytes_left);
+        buffer.resize(bytes_read as usize, 0);
+        file.read_exact(buffer.as_mut_slice())?;
+        bytes_left -= bytes_read;
+
+        //seek to destination start
+        file.seek(SeekFrom::Start(dst.0))?;
+        file.write_all(&buffer)?;
+    }
+
+    Ok(())
+}
+
+
+
+pub fn copy_chunk(file_path: &str, src: (u64, u64), dst: (u64, u64)) -> anyhow::Result<()> {
+    match copy_chunk_int(file_path, src, dst) {
+        Ok(_) => Ok(()),
+        Err(e) => {
+            log::error!("Error copying chunk {}: {}", file_path, e);
+            Err(e)
+        }
+    }
+
+}
+
+pub fn output_chunk_int(file_path: &str, data: (u64, u64)) -> anyhow::Result<()>  {
+    if data.1 <= data.0 {
+        bail!("Data range is invalid {}-{}", data.0, data.1);
+    }
+    let file_size = std::fs::metadata(file_path)?.len();
+    if data.1 > file_size {
+        bail!("Data range is out of bounds {}-{} file size {}", data.0, data.1, file_size);
+    }
+
+    //open file for read write
+    let mut file = OpenOptions::new()
+        .read(true)
+        .truncate(false)
+        .open(file_path)?;
+
+    file.seek(SeekFrom::Start(data.0))?;
+    //read buffer
+    let mut bytes_left = data.1 - data.0;
+    let mut buffer = vec![0u8; std::cmp::min(1000 * 1000, bytes_left as usize)];
+    while bytes_left > 0 {
+        let bytes_read = std::cmp::min(buffer.len() as u64, bytes_left);
+        buffer.resize(bytes_read as usize, 0);
+        file.read_exact(buffer.as_mut_slice())?;
+        bytes_left -= bytes_read;
+        std::io::stdout().write_all(&buffer)?;
+    }
+    Ok(())
+}
+pub fn output_chunk(file_path: &str, data: (u64, u64)) -> anyhow::Result<()>  {
+    match output_chunk_int(file_path, data) {
+        Ok(_) => Ok(()),
+        Err(e) => {
+            log::error!("Error outputting chunk {}: {}", file_path, e);
             Err(e)
         }
     }

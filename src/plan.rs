@@ -1,4 +1,5 @@
 use anyhow::bail;
+use crate::ops::{copy_chunk, output_chunk, truncate_file};
 
 pub struct ChunkPlan {
     chunk_size: u64,
@@ -36,6 +37,25 @@ pub struct Operation {
     pub is_middle: bool
 }
 
+pub fn commit_plan(file_path: &str, operations: &[Operation]) -> anyhow::Result<()> {
+    let mut step_no = 0;
+    for op in operations {
+        let middle_msg = if op.is_middle { "(middle) " } else { "" };
+        log::info!("{} - {}Output chunk {}-{}", step_no, middle_msg, op.data_chunk.0, op.data_chunk.1);
+        output_chunk(file_path, op.data_chunk).unwrap();
+        step_no += 1;
+        if let Some((src_start, src_end)) = op.src_chunk {
+            log::info!("{} - Copy {} bytes from {}-{} to {}-{}", step_no, src_end - src_start, src_start, src_end, op.data_chunk.0, op.data_chunk.1);
+            copy_chunk(file_path, (src_start, src_end), op.data_chunk).unwrap();
+        }
+        step_no += 1;
+        log::info!("{} - Truncate file to {} bytes", step_no, op.truncate_to);
+        truncate_file(file_path, op.truncate_to).unwrap();
+        step_no += 1;
+    }
+    Ok(())
+}
+
 pub fn explain_plan(operations: &[Operation]) {
     let mut step_no = 0;
     for op in operations {
@@ -44,8 +64,6 @@ pub fn explain_plan(operations: &[Operation]) {
         step_no += 1;
         if let Some((src_start, src_end)) = op.src_chunk {
             log::info!("{} - Copy {} bytes from {}-{} to {}-{}", step_no, src_end - src_start, src_start, src_end, op.data_chunk.0, op.data_chunk.1);
-        } else {
-            log::info!("{} - Output chunk {} - pos {}-{}", step_no, op.chunk_no, op.data_chunk.0, op.data_chunk.1);
         }
         step_no += 1;
         log::info!("{} - Truncate file to {} bytes", step_no, op.truncate_to);
@@ -108,14 +126,14 @@ pub fn plan_into_realization(plan: ChunkPlan) -> anyhow::Result<Vec<Operation>> 
     for i in 0..plan.start_chunks {
         let chunk_no = plan.start_chunks - i - 1;
         let dst_chunk_start = chunk_no * plan.chunk_size;
-        let dst_chunk_end = dst_chunk_start + plan.middle_right_size;
+        let dst_chunk_end = dst_chunk_start + plan.chunk_size;
 
         operations.push(Operation {
             chunk_no: operation_no,
             src_chunk: None,
             data_chunk: (dst_chunk_start, dst_chunk_end),
             truncate_to: plan.chunk_size * chunk_no,
-            is_middle: true,
+            is_middle: false,
         });
         operation_no += 1;
         if operation_no > operation_limit {
