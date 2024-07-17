@@ -47,8 +47,8 @@ jobs:
             cat-once --file test.file --test-create-ascii-file-size=$file_size
             sha1sum test.file > test-in.file.sha1
             cargo run --release -- --file test.file --chunk-size $chunk_size > test-out.file
-            if [ ! -e "test.file" ]; then
-              echo "File does not exist."
+            if [ -e "test.file" ]; then
+              echo "File exist but it should not"
               exit 1
             fi
             mv test-out.file test.file
