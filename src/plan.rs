@@ -40,7 +40,7 @@ pub fn explain_plan(operations: &[Operation]) {
     let mut step_no = 0;
     for op in operations {
         let middle_msg = if op.is_middle { "(middle) " } else { "" };
-        log::info!("{} - {}Output chunk {}-{}", middle_msg, step_no, op.data_chunk.0, op.data_chunk.1);
+        log::info!("{} - {}Output chunk {}-{}", step_no, middle_msg, op.data_chunk.0, op.data_chunk.1);
         step_no += 1;
         if let Some((src_start, src_end)) = op.src_chunk {
             log::info!("{} - Copy {} bytes from {}-{} to {}-{}", step_no, src_end - src_start, src_start, src_end, op.data_chunk.0, op.data_chunk.1);
