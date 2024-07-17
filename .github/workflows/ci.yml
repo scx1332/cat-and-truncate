@@ -26,7 +26,7 @@ jobs:
       - name: Mount tmpfs
         run: |
           mkdir tmp
-          sudo mount -t tmpfs -o size=1560M tmpfs tmp
+          sudo mount -t tmpfs -o size=1100M tmpfs tmp
           cp test.tar.zstd tmp
           cd tmp
           cat-once --file test.tar.zstd > test2.tar.zstd
