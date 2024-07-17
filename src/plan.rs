@@ -37,20 +37,24 @@ pub struct Operation {
     pub is_middle: bool,
 }
 
-pub fn commit_plan(file_path: &str, operations: &[Operation], dry_run: bool) -> anyhow::Result<()> {
+pub fn commit_plan(
+    file_path: Option<&str>,
+    operations: &[Operation],
+    dry_run: bool,
+) -> anyhow::Result<()> {
     let mut step_no = 0;
     for op in operations {
         let middle_msg = if op.is_middle { "(middle) " } else { "" };
         log::info!(
             "{} - {}Output chunk {} - {}-{}",
-            op.chunk_no,
             step_no,
             middle_msg,
+            op.chunk_no,
             op.data_chunk.0,
             op.data_chunk.1
         );
         if !dry_run {
-            output_chunk(file_path, op.data_chunk).unwrap();
+            output_chunk(file_path.expect("file path expected"), op.data_chunk).unwrap();
         }
         step_no += 1;
         if let Some((src_start, src_end)) = op.src_chunk {
@@ -64,46 +68,22 @@ pub fn commit_plan(file_path: &str, operations: &[Operation], dry_run: bool) -> 
                 op.data_chunk.1
             );
             if !dry_run {
-                copy_chunk(file_path, (src_start, src_end), op.data_chunk).unwrap();
+                copy_chunk(
+                    file_path.expect("file path expected"),
+                    (src_start, src_end),
+                    op.data_chunk,
+                )
+                .unwrap();
             }
         }
         step_no += 1;
         log::info!("{} - Truncate file to {} bytes", step_no, op.truncate_to);
         if !dry_run {
-            truncate_file(file_path, op.truncate_to).unwrap();
+            truncate_file(file_path.expect("file path expected"), op.truncate_to).unwrap();
         }
         step_no += 1;
     }
     Ok(())
-}
-
-pub fn explain_plan(operations: &[Operation]) {
-    let mut step_no = 0;
-    for op in operations {
-        let middle_msg = if op.is_middle { "(middle) " } else { "" };
-        log::info!(
-            "{} - {}Output chunk {}-{}",
-            step_no,
-            middle_msg,
-            op.data_chunk.0,
-            op.data_chunk.1
-        );
-        step_no += 1;
-        if let Some((src_start, src_end)) = op.src_chunk {
-            log::info!(
-                "{} - Copy {} bytes from {}-{} to {}-{}",
-                step_no,
-                src_end - src_start,
-                src_start,
-                src_end,
-                op.data_chunk.0,
-                op.data_chunk.1
-            );
-        }
-        step_no += 1;
-        log::info!("{} - Truncate file to {} bytes", step_no, op.truncate_to);
-        step_no += 1;
-    }
 }
 
 pub fn plan_into_realization(plan: ChunkPlan) -> anyhow::Result<Vec<Operation>> {
@@ -140,9 +120,14 @@ pub fn plan_into_realization(plan: ChunkPlan) -> anyhow::Result<Vec<Operation>> 
         let src_chunk_start = dst_chunk_start + plan.middle_left_size;
         let src_chunk_end = src_chunk_start + plan.middle_right_size;
 
+        let src_chunk = if plan.middle_right_size > 0 {
+            Some((src_chunk_start, src_chunk_end))
+        } else {
+            None
+        };
         operations.push(Operation {
             chunk_no: operation_no,
-            src_chunk: Some((src_chunk_start, src_chunk_end)),
+            src_chunk,
             data_chunk: (dst_chunk_start, dst_chunk_end),
             truncate_to: plan.chunk_size * plan.start_chunks + plan.middle_right_size,
             is_middle: true,
@@ -225,13 +210,13 @@ mod tests {
 
     #[test]
     fn test_plan_chunks_4() {
-        let chunk_size = 2;
+        let chunk_size = 1;
         let file_size = 11;
         let plan = plan_chunks(chunk_size, file_size).unwrap();
 
-        assert_eq!(plan.start_chunks, 2);
-        assert_eq!(plan.middle_left_size, 2);
-        assert_eq!(plan.middle_right_size, 1);
+        assert_eq!(plan.start_chunks, 5);
+        assert_eq!(plan.middle_left_size, 1);
+        assert_eq!(plan.middle_right_size, 0);
     }
 
     #[test]

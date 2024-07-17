@@ -2,7 +2,7 @@ mod ops;
 mod plan;
 
 use crate::ops::{generate_random_file, generate_zero_file, truncate_file};
-use crate::plan::{commit_plan, explain_plan, plan_chunks, plan_into_realization};
+use crate::plan::{commit_plan, plan_chunks, plan_into_realization};
 use clap::Parser;
 use std::env;
 
@@ -45,7 +45,7 @@ fn cat_file(file_path: &str, chunk_size: u64, dry_run: bool) -> anyhow::Result<(
     let chunk_size = std::cmp::min(file_size, chunk_size) as u64;
     let plan = plan_chunks(chunk_size, file_size).unwrap();
     let operations = plan_into_realization(plan).unwrap();
-    commit_plan(file_path, &operations, dry_run)
+    commit_plan(Some(file_path), &operations, dry_run)
 }
 
 fn main() -> anyhow::Result<()> {
@@ -77,9 +77,9 @@ fn main() -> anyhow::Result<()> {
     if args.plan_chunks {
         test_run = true;
 
-        let plan = plan_chunks(1000, 10011).unwrap();
+        let plan = plan_chunks(1, 11).unwrap();
         let operations = plan_into_realization(plan).unwrap();
-        explain_plan(&operations);
+        commit_plan(None, &operations, true)?;
     }
 
     if !test_run {
