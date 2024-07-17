@@ -191,21 +191,23 @@ fn copy_chunk_int(file_path: &str, src: (u64, u64), dst: (u64, u64)) -> anyhow::
         .truncate(false)
         .open(file_path)?;
 
-    file.seek(SeekFrom::Start(src.0))?;
-    //seek to source start
 
     //read buffer
     let mut bytes_left = src.1 - src.0;
     let mut buffer = vec![0u8; std::cmp::min(1000 * 1000, bytes_left as usize)];
+    let mut bytes_written = 0;
     while bytes_left > 0 {
+        file.seek(SeekFrom::Start(src.0 + bytes_written))?;
+        //seek to source start
         let bytes_read = std::cmp::min(buffer.len() as u64, bytes_left);
         buffer.resize(bytes_read as usize, 0);
         file.read_exact(buffer.as_mut_slice())?;
         bytes_left -= bytes_read;
 
         //seek to destination start
-        file.seek(SeekFrom::Start(dst.0))?;
+        file.seek(SeekFrom::Start(dst.0 + bytes_written))?;
         file.write_all(&buffer)?;
+        bytes_written += bytes_read;
     }
 
     Ok(())
