@@ -68,10 +68,15 @@ pub fn commit_plan(
                 op.data_chunk.1
             );
             if !dry_run {
+                let data_chunk = if op.is_middle && (src_end - src_start + 1 == op.data_chunk.1 - op.data_chunk.0) {
+                    (op.data_chunk.0, op.data_chunk.1 - 1)
+                } else {
+                    op.data_chunk
+                };
                 copy_chunk(
                     file_path.expect("file path expected"),
                     (src_start, src_end),
-                    op.data_chunk,
+                    data_chunk,
                 )
                 .unwrap();
             }
