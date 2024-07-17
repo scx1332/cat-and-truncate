@@ -2,7 +2,7 @@ mod ops;
 mod plan;
 
 use crate::ops::{generate_random_file, generate_zero_file, truncate_file};
-use crate::plan::{plan_chunks, realize_plan};
+use crate::plan::{explain_plan, plan_chunks, plan_into_realization};
 use clap::Parser;
 use std::env;
 use std::fs::{File, OpenOptions};
@@ -162,7 +162,8 @@ fn main() -> anyhow::Result<()> {
         test_run = true;
 
         let plan = plan_chunks(1000, 10011).unwrap();
-        realize_plan(plan).unwrap();
+        let operations = plan_into_realization(plan).unwrap();
+        explain_plan(&operations);
     }
 
     if !test_run {

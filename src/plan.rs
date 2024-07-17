@@ -1,4 +1,5 @@
 use anyhow::bail;
+use log::{info, log};
 
 pub struct ChunkPlan {
     chunk_size: u64,
@@ -28,43 +29,100 @@ pub fn plan_chunks(chunk_size: u64, file_size: u64) -> anyhow::Result<ChunkPlan>
     })
 }
 
-pub fn realize_plan(plan: ChunkPlan) -> anyhow::Result<()> {
+pub struct Operation {
+    pub chunk_no: u64,
+    pub src_chunk: Option<(u64, u64)>,
+    pub data_chunk: (u64, u64),
+    pub truncate_to: u64,
+    pub is_middle: bool
+}
+
+pub fn explain_plan(operations: &[Operation]) {
+    let mut step_no = 0;
+    for op in operations {
+        log::info!("{} - Output chunk {}-{}", step_no, op.data_chunk.0, op.data_chunk.1);
+        step_no += 1;
+        if let Some((src_start, src_end)) = op.src_chunk {
+            log::info!("{} - Copy {} bytes from {}-{} to {}-{}", step_no, src_end - src_start, src_start, src_end, op.data_chunk.0, op.data_chunk.1);
+        } else {
+            log::info!("{} - Output chunk {} - pos {}-{}", step_no, op.chunk_no, op.data_chunk.0, op.data_chunk.1);
+        }
+        step_no += 1;
+        log::info!("{} - Truncate file to {} bytes", step_no, op.truncate_to);
+        step_no += 1;
+    }
+}
+
+pub fn plan_into_realization(plan: ChunkPlan) -> anyhow::Result<Vec<Operation>> {
+    let mut operations = Vec::new();
+    let mut operation_no = 0;
+    let operation_limit = 1000000;
     log::info!("Realizing plan for file size {} and chunk size {}", plan.file_size, plan.chunk_size);
     for i in 0..plan.start_chunks {
         let dst_chunk_start = i * plan.chunk_size;
         let dst_chunk_end = dst_chunk_start + plan.chunk_size;
         let src_chunk_start = plan.file_size - ((i + 1) * plan.chunk_size);
         let src_chunk_end = src_chunk_start + plan.chunk_size;
-        println!("Output chunk {} - pos {}-{}", i, dst_chunk_start, dst_chunk_end);
-        println!("Copy {} bytes from {}-{} to {}-{}", plan.chunk_size, src_chunk_start, src_chunk_end, dst_chunk_start, dst_chunk_end);
-        println!(
-            "Truncate file to {} bytes",
-            plan.file_size - ((i + 1) * plan.chunk_size)
-        );
+
+        operations.push(Operation {
+            chunk_no: operation_no,
+            src_chunk: Some((src_chunk_start, src_chunk_end)),
+            data_chunk: (dst_chunk_start, dst_chunk_end),
+            truncate_to: plan.file_size - ((i + 1) * plan.chunk_size),
+            is_middle: false,
+        });
+        operation_no += 1;
+        if operation_no > operation_limit {
+            bail!("Operation limit reached {}", operation_limit);
+        }
     }
 
     if plan.middle_left_size > 0 {
-        println!("Output middle left chunk {}", plan.middle_left_size);
-        println!("Copy {} bytes", plan.middle_right_size);
-        println!(
-            "Truncate file to {} bytes",
-            plan.chunk_size * plan.start_chunks + plan.middle_right_size
-        );
+        let dst_chunk_start = plan.start_chunks * plan.chunk_size;
+        let dst_chunk_end = dst_chunk_start + plan.middle_left_size;
+        let src_chunk_start = dst_chunk_start + plan.middle_left_size;
+        let src_chunk_end = src_chunk_start + plan.middle_right_size;
+
+        operations.push(Operation {
+            chunk_no: operation_no,
+            src_chunk: Some((src_chunk_start, src_chunk_end)),
+            data_chunk: (dst_chunk_start, dst_chunk_end),
+            truncate_to: plan.chunk_size * plan.start_chunks + plan.middle_right_size,
+            is_middle: true,
+        });
+        operation_no += 1
     }
     if plan.middle_right_size > 0 {
-        println!("Output middle right chunk {}", plan.middle_right_size);
-        println!(
-            "Truncate file to {} bytes",
-            plan.chunk_size * plan.start_chunks
-        );
+        let dst_chunk_start = plan.start_chunks * plan.chunk_size;
+        let dst_chunk_end = dst_chunk_start + plan.middle_right_size;
+
+        operations.push(Operation {
+            chunk_no: operation_no,
+            src_chunk: None,
+            data_chunk: (dst_chunk_start, dst_chunk_end),
+            truncate_to: plan.chunk_size * plan.start_chunks,
+            is_middle: true,
+        });
+        operation_no += 1
     }
     for i in 0..plan.start_chunks {
         let chunk_no = plan.start_chunks - i - 1;
-        println!("Output chunk {}", chunk_no);
-        println!("Copy {} bytes", plan.chunk_size);
-        println!("Truncate file to {} bytes", plan.chunk_size * chunk_no);
+        let dst_chunk_start = chunk_no * plan.chunk_size;
+        let dst_chunk_end = dst_chunk_start + plan.middle_right_size;
+
+        operations.push(Operation {
+            chunk_no: operation_no,
+            src_chunk: None,
+            data_chunk: (dst_chunk_start, dst_chunk_end),
+            truncate_to: plan.chunk_size * chunk_no,
+            is_middle: true,
+        });
+        operation_no += 1;
+        if operation_no > operation_limit {
+            bail!("Operation limit reached {}", operation_limit);
+        }
     }
-    Ok(())
+    Ok(operations)
 }
 
 #[cfg(test)]
