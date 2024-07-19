@@ -19,7 +19,7 @@ jobs:
 
       - name: Prepare test file
         run: |
-          cat-once --file test.file --test-create-ascii-file-size=1000000000
+          cat-once test.file --test-create-ascii-file-size=1000000000
           sha1sum test.file > test-in.file.sha1
           tar -cf - test.file | zstd -c > test.tar.zst
 
@@ -29,8 +29,8 @@ jobs:
           sudo mount -t tmpfs -o size=1100M tmpfs tmp
           cp test.tar.zst tmp
           cd tmp
-          cat-once --file test.tar.zst --chunk-size 55MB > test2.tar.zst
-          cat-once --file test2.tar.zst --chunk-size 42MB | tar -I zstd -xf - -C .
+          cat-once test.tar.zst --chunk-size 55MB > test2.tar.zst
+          cat-once test2.tar.zst --chunk-size 42MB | tar -I zstd -xf - -C .
           sha1sum test.file > ../test-out.file.sha1
 
       - name: Compare checksums
@@ -44,9 +44,9 @@ jobs:
           for i in {1..100}; do
             file_size=$(( ( RANDOM % 10000000 ) + 1 ))
             chunk_size=$(( ( RANDOM % 1000000 ) + 20000 ))
-            cat-once --file test.file --test-create-ascii-file-size=$file_size
+            cat-once test.file --test-create-ascii-file-size=$file_size
             sha1sum test.file > test-in.file.sha1
-            cargo run --release -- --file test.file --chunk-size $chunk_size > test-out.file
+            cargo run --release -- --chunk-size $chunk_size test.file > test-out.file
             if [ -e "test.file" ]; then
               echo "File exist but it should not"
               exit 1

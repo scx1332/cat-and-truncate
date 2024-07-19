@@ -10,16 +10,16 @@ use std::env;
 #[clap(author, version, about, long_about = None)]
 struct Args {
     /// Name of the file to read, warning it will be removed
-    #[clap(short, long)]
+    #[clap()]
     file: String,
 
     /// Percent of file at which truncate should be performed
     #[clap(short, long)]
     chunk_size: Option<bytesize::ByteSize>,
 
-    /// Dry run, do not perform any operations
+    /// Run otherwise simulate
     #[clap(long)]
-    dry_run: bool,
+    run: bool,
 
     #[clap(long)]
     test_create_zero_file_size: Option<u64>,
@@ -99,7 +99,7 @@ fn main() -> anyhow::Result<()> {
             args.chunk_size
                 .map(|v| v.as_u64())
                 .unwrap_or(default_chunk_size),
-            args.dry_run,
+            !args.run,
         );
     }
     Ok(())
