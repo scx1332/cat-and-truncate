@@ -191,7 +191,6 @@ fn copy_chunk_int(file_path: &str, src: (u64, u64), dst: (u64, u64)) -> anyhow::
         .truncate(false)
         .open(file_path)?;
 
-
     //read buffer
     let mut bytes_left = src.1 - src.0;
     let mut buffer = vec![0u8; std::cmp::min(1000 * 1000, bytes_left as usize)];

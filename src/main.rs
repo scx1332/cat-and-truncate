@@ -14,8 +14,8 @@ struct Args {
     file: String,
 
     /// Percent of file at which truncate should be performed
-    #[clap(short, long, default_value = "50kB")]
-    chunk_size: bytesize::ByteSize,
+    #[clap(short, long)]
+    chunk_size: Option<bytesize::ByteSize>,
 
     /// Dry run, do not perform any operations
     #[clap(long)]
@@ -83,7 +83,24 @@ fn main() -> anyhow::Result<()> {
     }
 
     if !test_run {
-        return cat_file(&args.file, args.chunk_size.as_u64(), args.dry_run);
+        // get file size
+        let file_size = std::fs::metadata(&args.file)?.len();
+        let default_chunk_size = if file_size < 1024 * 1024 {
+            50000
+        } else if file_size < 1024 * 1024 * 1024 {
+            file_size / 100
+        } else if file_size < 1024 * 1024 * 1024 * 1024 {
+            file_size / 500
+        } else {
+            file_size / 1000
+        };
+        return cat_file(
+            &args.file,
+            args.chunk_size
+                .map(|v| v.as_u64())
+                .unwrap_or(default_chunk_size),
+            args.dry_run,
+        );
     }
     Ok(())
 }
