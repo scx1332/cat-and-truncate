@@ -1,6 +1,6 @@
 [package]
 name = "cat-once"
-version = "1.1.1"
+version = "1.2.0"
 edition = "2021"
 description = "Tool used to cat files in tight disc conditions saving disk space"
 authors = ["Scx1332 <sieciech.czajka@golem.network>"]
